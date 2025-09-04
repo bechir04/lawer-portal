@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, ReactNode } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface Case {
+  value: ReactNode
   id: string;
   title: string;
   client: string;
@@ -30,7 +31,6 @@ interface Case {
   priority: string;
   startDate: string;
   nextHearing: string;
-  value: string;
   description: string;
   lastActivity?: string;
 }
@@ -41,6 +41,9 @@ export default function CasesPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [currentCase, setCurrentCase] = useState<Case | null>(null)
 
   useEffect(() => {
     const fetchCases = async () => {
@@ -62,6 +65,63 @@ export default function CasesPage() {
 
     fetchCases()
   }, [])
+
+  const handleEditCase = (caseItem: Case) => {
+    setCurrentCase(caseItem)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleDeleteCase = (caseItem: Case) => {
+    setCurrentCase(caseItem)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleUpdateCase = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!currentCase) return
+
+    try {
+      const response = await fetch(`/api/dashboard/cases/${currentCase.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(currentCase),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update case')
+      }
+
+      // Update the cases list with the updated case
+      setCases(cases.map(c => c.id === currentCase.id ? currentCase : c))
+      setIsEditDialogOpen(false)
+    } catch (err) {
+      console.error('Error updating case:', err)
+      // You could set an error state here to display to the user
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!currentCase) return
+
+    try {
+      const response = await fetch(`/api/dashboard/cases/${currentCase.id}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete case')
+      }
+
+      // Remove the deleted case from the cases list
+      setCases(cases.filter(c => c.id !== currentCase.id))
+      setIsDeleteDialogOpen(false)
+    } catch (err) {
+      console.error('Error deleting case:', err)
+      // You could set an error state here to display to the user
+    }
+  }
 
   const filteredCases = cases.filter(
     (caseItem) =>
@@ -173,12 +233,7 @@ export default function CasesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="value" className="text-right">
-                  Case Value
-                </Label>
-                <Input id="value" placeholder="$0" className="col-span-3" />
-              </div>
+
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="description" className="text-right">
                   Description
@@ -226,11 +281,11 @@ export default function CasesPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <CardTitle className="text-sm font-medium">Closed Cases</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">$150K</div>
-            <p className="text-xs text-muted-foreground">Combined case value</p>
+            <div className="text-3xl font-bold">{cases.filter((c) => c.status === "Closed").length}</div>
+            <p className="text-xs text-muted-foreground">Completed cases</p>
           </CardContent>
         </Card>
       </div>
@@ -330,11 +385,14 @@ export default function CasesPage() {
                               View Details
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => handleEditCase(caseItem)}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit Case
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">
+                          <DropdownMenuItem 
+                            onSelect={() => handleDeleteCase(caseItem)}
+                            className="text-red-600"
+                          >
                             <Trash2 className="mr-2 h-4 w-4" />
                             Delete Case
                           </DropdownMenuItem>
@@ -348,6 +406,119 @@ export default function CasesPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Edit Case</DialogTitle>
+            <DialogDescription>Update the case information.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateCase}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-title" className="text-right">
+                  Case Title
+                </Label>
+                <Input 
+                  id="edit-title" 
+                  className="col-span-3" 
+                  value={currentCase?.title || ''}
+                  onChange={(e) => setCurrentCase(currentCase ? {...currentCase, title: e.target.value} : null)}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-client" className="text-right">
+                  Client
+                </Label>
+                <Input 
+                  id="edit-client" 
+                  className="col-span-3" 
+                  value={currentCase?.client || ''}
+                  onChange={(e) => setCurrentCase(currentCase ? {...currentCase, client: e.target.value} : null)}
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-status" className="text-right">
+                  Status
+                </Label>
+                <Select 
+                  value={currentCase?.status || ''}
+                  onValueChange={(value) => setCurrentCase(currentCase ? {...currentCase, status: value} : null)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="In Review">In Review</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-priority" className="text-right">
+                  Priority
+                </Label>
+                <Select
+                  value={currentCase?.priority || ''}
+                  onValueChange={(value) => setCurrentCase(currentCase ? {...currentCase, priority: value} : null)}
+                >
+                  <SelectTrigger className="col-span-3">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="High">High</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="edit-description" className="text-right">
+                  Description
+                </Label>
+                <Textarea 
+                  id="edit-description" 
+                  className="col-span-3" 
+                  value={currentCase?.description || ''}
+                  onChange={(e) => setCurrentCase(currentCase ? {...currentCase, description: e.target.value} : null)}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the case "{currentCase?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

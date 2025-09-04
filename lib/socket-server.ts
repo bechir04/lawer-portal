@@ -22,12 +22,22 @@ type MessageWithSender = Message & {
 };
 
 // Main function to initialize socket
+declare global {
+  var io: IOServer | undefined; // This must be a `var` and not a `let / const`
+}
+
+let io: IOServer;
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponseWithSocket
 ) {
   if (!res.socket.server.io) {
-    const io = new IOServer(res.socket.server);
+    io = new IOServer(res.socket.server, {
+      path: '/api/socketio',
+      addTrailingSlash: false,
+    });
+    global.io = io;
     res.socket.server.io = io;
 
     io.on("connection", (socket) => {
@@ -81,7 +91,7 @@ export default async function handler(
             },
           });
 
-          io.to(conversationId).emit("message", newMessage);
+          io.to(conversationId).emit("receive_message", newMessage);
         }
       );
     });
@@ -91,3 +101,5 @@ export default async function handler(
 
   res.end();
 }
+
+export { io };

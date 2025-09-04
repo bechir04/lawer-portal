@@ -58,13 +58,18 @@ export async function middleware(req: NextRequest) {
   debug('User role:', userRole);
 
   // Redirect to appropriate dashboard based on role
-  if (pathname === '/' || pathname === '/dashboard') {
-    const roleBasedPath = userRole === 'CLIENT' ? '/client' : '/dashboard';
-    if (pathname !== roleBasedPath) {
-      debug(`Redirecting to role-based path: ${roleBasedPath}`);
-      url.pathname = roleBasedPath;
-      return NextResponse.redirect(url);
-    }
+  if (pathname === '/') {
+    const roleBasedPath = userRole === 'CLIENT' ? '/client' : '/dashboard/clients';
+    debug(`Redirecting to role-based path: ${roleBasedPath}`);
+    url.pathname = roleBasedPath;
+    return NextResponse.redirect(url);
+  }
+  
+  // Redirect /dashboard to /dashboard/clients for lawyers
+  if (pathname === '/dashboard' && (userRole === 'LAWYER' || userRole === 'ADMIN')) {
+    debug('Redirecting lawyer from /dashboard to /dashboard/clients');
+    url.pathname = '/dashboard/clients';
+    return NextResponse.redirect(url);
   }
 
   // Check role-based access for protected paths
@@ -90,6 +95,7 @@ export async function middleware(req: NextRequest) {
 // Apply middleware to all routes except API
 export const config = {
   matcher: [
+    '/',
     '/client/:path*',
     '/dashboard/:path*',
     '/admin/:path*',

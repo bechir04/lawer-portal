@@ -119,16 +119,21 @@ export const useConversations = () => {
     if (!socket) return;
 
     const handleNewMessage = (message: Message) => {
-      setMessages(prev => [message, ...prev]);
+      setMessages(prev => [...prev, message]);
       
       // Update the last message in the conversations list
       setConversations(prev =>
         prev.map(conv =>
           conv.id === message.conversationId
-            ? { ...conv, lastMessage: message }
+            ? { ...conv, lastMessage: message, unreadCount: conv.unreadCount + 1 }
             : conv
         )
       );
+
+      // If the new message belongs to the currently selected conversation, update it
+      if (selectedConversation?.id === message.conversationId) {
+        setSelectedConversation(prev => prev ? { ...prev, lastMessage: message } : null);
+      }
     };
 
     socket.on('receive_message', handleNewMessage);

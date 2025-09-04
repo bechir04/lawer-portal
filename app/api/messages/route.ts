@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
+declare const io: any;
 
 const sendMessageSchema = z.object({
   content: z.string().min(1, "Message content is required"),
@@ -167,6 +168,8 @@ export async function POST(request: NextRequest) {
         type: "APPOINTMENT_UPDATED",
       },
     })
+
+    io.to(conversationId).emit("receive_message", message);
 
     return NextResponse.json(message, { status: 201 })
   } catch (error) {
