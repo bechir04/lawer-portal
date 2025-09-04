@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-07-30.basil'
+  apiVersion: '2025-08-27.basil',
 })
 
 export async function POST(request: NextRequest) {
@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { quoteId, amount } = body
 
-    // Verify the quote belongs to this client using raw query
+    if (!quoteId || amount == null) {
+      return NextResponse.json({ error: 'Missing required parameters: quoteId and amount' }, { status: 400 })
+    }
+
     const casePricingResult = await prisma.$queryRaw`
       SELECT cp.*, c.title as caseTitle, c."lawyerId", c."clientId", 
              u1.email as clientEmail, u2.name as lawyerName
@@ -28,14 +31,13 @@ export async function POST(request: NextRequest) {
       JOIN "User" u2 ON c."lawyerId" = u2.id
       WHERE cp.id = ${quoteId} AND c."clientId" = ${session.user.id} AND cp.status = 'ACCEPTED'
     ` as any[]
-    
+
     const casePricing = casePricingResult[0]
 
     if (!casePricing) {
       return NextResponse.json({ error: 'Quote not found or not accepted' }, { status: 404 })
     }
 
-    // Create Stripe checkout session
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -62,11 +64,16 @@ export async function POST(request: NextRequest) {
       customer_email: casePricing.clientEmail || undefined
     })
 
-    // Store payment intent info using raw query
-    await prisma.$executeRaw`
-      INSERT INTO "PaymentIntent" (id, "stripeSessionId", "quoteId", "clientId", amount, status, "createdAt", "updatedAt")
-      VALUES (gen_random_uuid(), ${checkoutSession.id}, ${quoteId}, ${session.user.id}, ${amount / 100}, 'PENDING', ${new Date()}, ${new Date()})
-    `
+    // Store payment intent info using Prisma Client
+    await prisma.paymentIntent.create({
+      data: {
+        stripeSessionId: checkoutSession.id,
+        quoteId: quoteId,
+        clientId: session.user.id,
+        amount: amount / 100, // Convert from cents to dollars
+        status: 'PENDING',
+      }
+    });
 
     return NextResponse.json({ 
       clientSecret: checkoutSession.id,

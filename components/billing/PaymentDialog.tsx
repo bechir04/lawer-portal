@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
-import { Loader2, CreditCard, Banknote } from "lucide-react"
+import { Loader2, CreditCard } from "lucide-react"
+import { loadStripe } from '@stripe/stripe-js';
+
+// Initialize Stripe.js
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
 type PaymentDialogProps = {
   open: boolean
@@ -21,128 +22,97 @@ type PaymentDialogProps = {
   onSuccess?: () => void
 }
 
-type PaymentMethod = 'credit_card' | 'bank_transfer' | 'other'
 
 export function PaymentDialog({ open, onOpenChange, invoice, onSuccess }: PaymentDialogProps) {
   const [isLoading, setIsLoading] = useState(false)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card')
-  const [amount, setAmount] = useState(invoice.total.toString())
+  const [amount, setAmount] = useState(invoice.total)
   const { toast } = useToast()
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
+  const handleStripeCheckout = async () => {
+    setIsLoading(true);
 
     try {
-      // Simulate API call to process payment
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      toast({
-        title: "Payment Successful",
-        description: `Payment of $${parseFloat(amount).toFixed(2)} for invoice #${invoice.invoiceNumber} has been processed.`,
-      })
-      
-      onOpenChange(false)
-      onSuccess?.()
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: amount * 100, // Stripe expects amount in cents
+          invoiceId: invoice.id,
+          invoiceNumber: invoice.invoiceNumber,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create Stripe Checkout session');
+      }
+
+      const { sessionId } = await response.json();
+
+      const stripe = await stripePromise;
+      if (!stripe) {
+        throw new Error('Stripe.js has not loaded yet.');
+      }
+
+      const { error } = await stripe.redirectToCheckout({ sessionId });
+
+      if (error) {
+        console.error('Stripe redirect error:', error);
+        toast({
+          title: "Payment Error",
+          description: error.message || "An unexpected error occurred.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error("Payment error:", error)
+      console.error("Stripe checkout error:", error);
       toast({
         title: "Payment Failed",
-        description: "There was an error processing your payment. Please try again.",
+        description: "Could not initiate the payment process. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
+        <div>
           <DialogHeader>
             <DialogTitle>Pay Invoice #{invoice.invoiceNumber}</DialogTitle>
             <DialogDescription>
-              Complete your payment of ${invoice.total.toFixed(2)} due {new Date(invoice.dueDate).toLocaleDateString()}
+              You are about to pay ${invoice.total.toFixed(2)} for invoice #{invoice.invoiceNumber}.
+              You will be redirected to Stripe to complete your payment securely.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="amount">Amount to Pay</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-muted-foreground">$</span>
-                <Input
-                  id="amount"
-                  type="number"
-                  min="0.01"
-                  max={invoice.total}
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="pl-8"
-                  required
-                />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Outstanding balance: ${invoice.total.toFixed(2)}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Payment Method</Label>
-              <Select value={paymentMethod} onValueChange={(value: PaymentMethod) => setPaymentMethod(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="credit_card">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4" />
-                      <span>Credit/Debit Card</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="bank_transfer">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="h-4 w-4" />
-                      <span>Bank Transfer</span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="other">Other Payment Method</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {paymentMethod === 'credit_card' && (
-              <div className="rounded-lg border p-4">
-                <p className="text-sm font-medium mb-3">Pay with card</p>
-                <div className="space-y-3">
-                  <Input placeholder="Card number" className="font-mono tracking-widest" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input placeholder="MM/YY" className="text-center" />
-                    <Input placeholder="CVC" className="text-center" maxLength={4} />
-                  </div>
-                </div>
-              </div>
-            )}
+          <div className="my-8 text-center">
+            <p className="text-sm text-muted-foreground">Total Amount</p>
+            <p className="text-4xl font-bold">${invoice.total.toFixed(2)}</p>
           </div>
           
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button onClick={handleStripeCheckout} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  Redirecting...
                 </>
               ) : (
-                `Pay $${parseFloat(amount).toFixed(2)}`
+                <>
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Pay with Stripe
+                </>
               )}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   )

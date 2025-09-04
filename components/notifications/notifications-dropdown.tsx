@@ -31,51 +31,57 @@ export function NotificationsDropdown() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
-  // Fetch notifications
+  // Expose refetch function globally for triggering from other components
+  const refetchNotifications = async () => {
+    if (!session?.user?.id) return;
+    
+    try {
+      console.log('Fetching notifications...');
+      const response = await api.get('/notifications');
+      const data = response.data;
+      // Map isRead from API to read for frontend consistency
+      const mappedData = data.map((n: any) => ({
+        ...n,
+        read: n.isRead || false
+      }));
+      setNotifications(mappedData);
+      const unread = mappedData.filter((n: Notification) => !n.read).length;
+      setUnreadCount(unread);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
+  // Make refetch available globally
+  if (typeof window !== 'undefined') {
+    (window as any).refetchNotifications = refetchNotifications;
+  }
+
+  // Fetch notifications only on initial load
   useEffect(() => {
     if (!session?.user?.id) return;
-
-    const fetchNotifications = async () => {
-      try {
-        console.log('Fetching notifications...');
-        const response = await api.get('/notifications');
-        console.log('Notifications API response:', response);
-        const data = response.data;
-        console.log('Parsed notifications data:', data);
-        setNotifications(data);
-        const unread = data.filter((n: Notification) => !n.read).length;
-        console.log('Unread count:', unread);
-        setUnreadCount(unread);
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-      }
-    };
-
-    fetchNotifications();
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    refetchNotifications();
   }, [session?.user?.id]);
 
   const markAsRead = async (id: string) => {
     try {
-      await api.patch(`/notifications/${id}`, { read: true });
-      setNotifications(notifications.map(n => 
-        n.id === id ? { ...n, read: true } : n
-      ));
+      await api.put(`/notifications?id=${id}`);
+      // Remove the notification from the list instead of marking as read
+      setNotifications(notifications.filter(n => n.id !== id));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Error deleting notification:', error);
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      await api.patch('/notifications/mark-all-read');
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      await api.patch('/notifications');
+      // Remove all unread notifications from the list
+      setNotifications(notifications.filter(n => n.read));
       setUnreadCount(0);
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('Error deleting all notifications:', error);
     }
   };
 
@@ -163,18 +169,20 @@ export function NotificationsDropdown() {
           )}
         </ScrollArea>
         <div className="p-2 border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full text-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              // Navigate to notifications page
-              window.location.href = '/dashboard/notifications';
-            }}
-          >
-            View all notifications
-          </Button>
+          {unreadCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                markAllAsRead();
+              }}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Mark all as read
+            </Button>
+          )}
         </div>
       </DropdownMenuContent>
     </DropdownMenu>

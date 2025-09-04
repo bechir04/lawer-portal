@@ -76,7 +76,18 @@ export const useConversations = () => {
 
   // Send a new message
   const sendMessage = async (content: string, conversationId: string) => {
-    if (!content.trim() || !conversationId || !socket) return;
+    if (!content.trim() || !conversationId || !socket || !session?.user?.id) return;
+    
+    // Find the conversation to get the receiver ID
+    const conversation = conversations.find(c => c.id === conversationId);
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+    
+    // Determine the receiver (the other user in the conversation)
+    const receiverId = conversation.user1.id === session.user.id 
+      ? conversation.user2.id 
+      : conversation.user1.id;
     
     try {
       const response = await fetch('/api/messages', {
@@ -87,6 +98,7 @@ export const useConversations = () => {
         body: JSON.stringify({
           content,
           conversationId,
+          receiverId,
         }),
       });
 

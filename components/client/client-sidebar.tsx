@@ -57,21 +57,9 @@ export function ClientSidebar() {
       icon: FileText,
     },
     {
-      name: "analytics",
-      href: "/client/analytics",
-      label: "Analytics",
-      icon: BarChart3,
-    },
-    {
       name: "payments",
       href: "/client/payments",
       label: "Payments",
-      icon: CreditCard,
-    },
-    {
-      name: "billing",
-      href: "/client/billing",
-      label: "Billing",
       icon: CreditCard,
     },
     {

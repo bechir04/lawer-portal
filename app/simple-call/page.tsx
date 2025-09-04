@@ -296,3 +296,19 @@ export default function SimpleCallPage() {
     </div>
   )
 }
+function setLocalStream(arg0: null) {
+  throw new Error('Function not implemented.')
+}
+
+function setRemoteStream(arg0: null) {
+  throw new Error('Function not implemented.')
+}
+
+function setRemoteStream(arg0: null) {
+  throw new Error('Function not implemented.')
+}
+
+function setLocalStream(arg0: null) {
+  throw new Error('Function not implemented.')
+}
+

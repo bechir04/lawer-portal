@@ -1,7 +1,66 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth'; // ✅ fixed import
+import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    const { id } = params;
+
+    const appointment = await prisma.appointment.findUnique({
+      where: { id },
+      include: {
+        client: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        lawyer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        case: {
+          select: {
+            title: true,
+          },
+        },
+      },
+    });
+
+    if (!appointment) {
+      return new NextResponse('Appointment not found', { status: 404 });
+    }
+
+    const isClient = session.user.role === 'CLIENT';
+    const isLawyer = session.user.role === 'LAWYER';
+
+    if (
+      (isClient && appointment.clientId !== session.user.id) ||
+      (isLawyer && appointment.lawyerId !== session.user.id)
+    ) {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    return NextResponse.json(appointment);
+  } catch (error) {
+    console.error('Error fetching appointment:', error);
+    return new NextResponse('Internal Server Error', { status: 500 });
+  }
+}
 
 export async function PATCH(
   request: Request,

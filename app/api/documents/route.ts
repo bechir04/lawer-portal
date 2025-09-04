@@ -56,12 +56,28 @@ export async function GET() {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // Get documents for cases where the current user is the assigned lawyer
+    // Get all documents that lawyers should have access to
+    // This includes documents from their assigned cases AND documents uploaded by clients
     const documents = await prisma.document.findMany({
       where: {
-        case: {
-          lawyerId: session.user.id,
-        },
+        OR: [
+          // Documents from cases assigned to this lawyer
+          {
+            case: {
+              lawyerId: session.user.id,
+            },
+          },
+          // Documents uploaded by clients (even without case assignment)
+          {
+            uploader: {
+              role: 'CLIENT'
+            }
+          },
+          // Documents uploaded by this lawyer
+          {
+            uploaderId: session.user.id
+          }
+        ]
       },
       include: {
         case: {

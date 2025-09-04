@@ -14,9 +14,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { User, Bell, Shield, CreditCard, Globe, Save } from "lucide-react"
 
 export default function SettingsPage() {
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [smsNotifications, setSmsNotifications] = useState(false)
-  const [marketingEmails, setMarketingEmails] = useState(true)
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false)
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
+  
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    firstName: "John",
+    lastName: "Doe", 
+    email: "john.doe@lawfirm.com",
+    phone: "+1 (555) 123-4567",
+    bio: "Experienced lawyer specializing in corporate law and personal injury cases.",
+    location: "New York, NY"
+  })
+
+  const handleUpdatePayment = () => {
+    setIsUpdatingPayment(true)
+    // Simulate payment update process
+    setTimeout(() => {
+      setIsUpdatingPayment(false)
+      alert('Payment method updated successfully!')
+    }, 2000)
+  }
+
+  const handleSavePaymentInfo = () => {
+    alert('Payment information saved!')
+  }
+
+  const handleProfileChange = (field: string, value: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
+  const handleSaveProfile = () => {
+    setIsUpdatingProfile(true)
+    // Simulate profile update process
+    setTimeout(() => {
+      setIsUpdatingProfile(false)
+      alert('Profile updated successfully!')
+    }, 1500)
+  }
 
   return (
     <div className="space-y-8">
@@ -26,18 +64,10 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             Profile
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
-          </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2">
-            <Shield className="h-4 w-4" />
-            Security
           </TabsTrigger>
           <TabsTrigger value="billing" className="gap-2">
             <CreditCard className="h-4 w-4" />
@@ -69,22 +99,39 @@ export default function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue="John" />
+                  <Input 
+                    id="firstName" 
+                    value={profileData.firstName}
+                    onChange={(e) => handleProfileChange('firstName', e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue="Doe" />
+                  <Input 
+                    id="lastName" 
+                    value={profileData.lastName}
+                    onChange={(e) => handleProfileChange('lastName', e.target.value)}
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="john.doe@lawfirm.com" />
+                <Input 
+                  id="email" 
+                  type="email" 
+                  value={profileData.email}
+                  onChange={(e) => handleProfileChange('email', e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" defaultValue="+1 (555) 123-4567" />
+                <Input 
+                  id="phone" 
+                  value={profileData.phone}
+                  onChange={(e) => handleProfileChange('phone', e.target.value)}
+                />
               </div>
 
               <div className="space-y-2">
@@ -92,142 +139,62 @@ export default function SettingsPage() {
                 <Textarea
                   id="bio"
                   placeholder="Tell clients about yourself..."
-                  defaultValue="Experienced lawyer specializing in corporate law and personal injury cases."
+                  value={profileData.bio}
+                  onChange={(e) => handleProfileChange('bio', e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
-                <Input id="location" defaultValue="New York, NY" />
+                <Input 
+                  id="location" 
+                  value={profileData.location}
+                  onChange={(e) => handleProfileChange('location', e.target.value)}
+                />
               </div>
 
-              <Button className="gap-2">
+              <Button 
+                className="gap-2" 
+                onClick={handleSaveProfile}
+                disabled={isUpdatingProfile}
+              >
                 <Save className="h-4 w-4" />
-                Save Changes
+                {isUpdatingProfile ? 'Saving...' : 'Save Changes'}
               </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Receive notifications about new messages and appointments
-                  </p>
-                </div>
-                <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
-              </div>
 
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>SMS Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Receive text messages for urgent matters</p>
-                </div>
-                <Switch checked={smsNotifications} onCheckedChange={setSmsNotifications} />
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Marketing Emails</Label>
-                  <p className="text-sm text-muted-foreground">Receive updates about new features and tips</p>
-                </div>
-                <Switch checked={marketingEmails} onCheckedChange={setMarketingEmails} />
-              </div>
-
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
-                Save Preferences
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Security Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <Input id="currentPassword" type="password" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <Input id="newPassword" type="password" />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input id="confirmPassword" type="password" />
-              </div>
-
-              <Button className="gap-2">
-                <Save className="h-4 w-4" />
-                Update Password
-              </Button>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Two-Factor Authentication</h3>
-                <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
-                <Button variant="outline">Enable 2FA</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="billing" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Billing Information</CardTitle>
+              <CardTitle>Payment Method</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Current Plan</Label>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-12 bg-muted rounded flex items-center justify-center text-xs font-medium">
+                    VISA
+                  </div>
                   <div>
-                    <p className="font-medium">Professional Plan</p>
-                    <p className="text-sm text-muted-foreground">$99/month</p>
+                    <p className="font-medium">•••• •••• •••• 4242</p>
+                    <p className="text-sm text-muted-foreground">Expires 12/25</p>
                   </div>
-                  <Button variant="outline">Change Plan</Button>
                 </div>
+                <Button 
+                  variant="outline" 
+                  onClick={handleUpdatePayment}
+                  disabled={isUpdatingPayment}
+                >
+                  {isUpdatingPayment ? 'Updating...' : 'Update'}
+                </Button>
               </div>
 
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Payment Method</h3>
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-12 bg-muted rounded flex items-center justify-center text-xs font-medium">
-                      VISA
-                    </div>
-                    <div>
-                      <p className="font-medium">•••• •••• •••• 4242</p>
-                      <p className="text-sm text-muted-foreground">Expires 12/25</p>
-                    </div>
-                  </div>
-                  <Button variant="outline">Update</Button>
-                </div>
-              </div>
-
-              <Button className="gap-2">
+              <Button className="gap-2" onClick={handleSavePaymentInfo}>
                 <Save className="h-4 w-4" />
-                Save Billing Info
+                Save Payment Info
               </Button>
             </CardContent>
           </Card>

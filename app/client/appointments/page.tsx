@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from "react"
 import { useSession } from "next-auth/react"
 import { format, parseISO, isBefore, isToday, isTomorrow, addHours } from "date-fns"
 import { Plus, Calendar, Clock, Video, MapPin, Phone, Loader2, AlertCircle, RefreshCw, X } from "lucide-react"
+import Link from "next/link"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -864,8 +865,10 @@ function ClientAppointmentsPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline">
-                        View Details
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/client/appointments/${appointment.id}`}>
+                          View Details
+                        </Link>
                       </Button>
                     </div>
                   </div>

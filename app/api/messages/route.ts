@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
+    const conversationId = searchParams.get("conversationId")
     const caseId = searchParams.get("caseId")
     const otherUserId = searchParams.get("userId")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
@@ -30,11 +31,11 @@ export async function GET(request: NextRequest) {
       OR: [{ senderId: session.user.id }, { receiverId: session.user.id }],
     }
 
-    if (caseId) {
+    if (conversationId) {
+      where.conversationId = conversationId
+    } else if (caseId) {
       where.caseId = caseId
-    }
-
-    if (otherUserId) {
+    } else if (otherUserId) {
       where.OR = [
         { senderId: session.user.id, receiverId: otherUserId },
         { senderId: otherUserId, receiverId: session.user.id },

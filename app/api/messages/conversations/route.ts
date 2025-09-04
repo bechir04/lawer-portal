@@ -40,7 +40,10 @@ export async function GET() {
       // Fetch conversations where the current user is either user1 or user2
       conversations = await prisma.conversation.findMany({
       where: {
-        
+        OR: [
+          { user1Id: session.user.id },
+          { user2Id: session.user.id },
+        ],
       },
       include: {
         user1: {
@@ -75,46 +78,45 @@ export async function GET() {
       return new NextResponse('Error fetching conversations', { status: 500 });
     }
 
-    // Format the response
-    const formattedConversations = conversations.map((conv: Conversation) => {
-      // Determine the other user in the conversation
-      const isUser1 = conv.user1Id === session.user.id;
-      const otherUser = isUser1 ? conv.user2 : conv.user1;
-      const currentUser = isUser1 ? conv.user1 : conv.user2;
-      
-      return {
-        id: conv.id,
-        // Include both users in the response
-        user1: {
-          id: conv.user1.id,
-          name: conv.user1.name || 'User',
-          email: conv.user1.email,
-          image: conv.user1.image,
-        },
-        user2: {
-          id: conv.user2.id,
-          name: conv.user2.name || 'User',
-          email: conv.user2.email,
-          image: conv.user2.image,
-        },
-        // For backward compatibility, include the other user as 'lawyer' and current user as 'client'
-        lawyer: isUser1 ? {
-          id: conv.user2.id,
-          name: conv.user2.name || 'Lawyer',
-          email: conv.user2.email,
-          image: conv.user2.image,
-        } : {
-          id: conv.user1.id,
-          name: conv.user1.name || 'Lawyer',
-          email: conv.user1.email,
-          image: conv.user1.image,
-        },
-        lastMessage: conv.messages[0]?.content || 'No messages yet',
-        timestamp: conv.messages[0]?.createdAt.toISOString() || conv.createdAt.toISOString(),
-        unread: 0, // You'll need to implement unread message count logic
-        isUser1: isUser1,
-      };
-    });
+    // Format the response with proper unread count
+    const formattedConversations = await Promise.all(
+      conversations.map(async (conv: Conversation) => {
+        // Determine the other user in the conversation
+        const isUser1 = conv.user1Id === session.user.id;
+        const otherUser = isUser1 ? conv.user2 : conv.user1;
+        
+        // Get unread message count for this conversation
+        const unreadCount = await prisma.message.count({
+          where: {
+            conversationId: conv.id,
+            receiverId: session.user.id,
+            seen: false,
+          },
+        });
+        
+        return {
+          id: conv.id,
+          // Include both users in the response
+          user1: {
+            id: conv.user1.id,
+            name: conv.user1.name || 'User',
+            email: conv.user1.email,
+            image: conv.user1.image,
+          },
+          user2: {
+            id: conv.user2.id,
+            name: conv.user2.name || 'User',
+            email: conv.user2.email,
+            image: conv.user2.image,
+          },
+          // The other user in the conversation
+          user: otherUser,
+          lastMessage: conv.messages[0] || null,
+          unreadCount: unreadCount,
+          createdAt: conv.createdAt.toISOString(),
+        };
+      })
+    );
 
     return NextResponse.json(formattedConversations);
   } catch (error) {

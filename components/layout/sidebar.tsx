@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Users,
   Briefcase,
-  Handshake,
   Video,
   MessageSquare,
   Settings,
@@ -29,11 +28,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
   const navItems = [
     {
-      name: "Dashboard",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
       name: "Clients",
       href: "/dashboard/clients",
       icon: Users,
@@ -47,11 +41,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       name: "Pricing",
       href: "/dashboard/pricing",
       icon: DollarSign,
-    },
-    {
-      name: "Services",
-      href: "/dashboard/services",
-      icon: Handshake,
     },
     {
       name: "Appointments",
@@ -72,11 +61,6 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       name: "Documents",
       href: "/dashboard/documents",
       icon: FileText,
-    },
-    {
-      name: "Analytics",
-      href: "/dashboard/analytics",
-      icon: BarChart3,
     },
     {
       name: "Settings",

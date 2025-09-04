@@ -74,6 +74,9 @@ export function DocumentsTable() {
   const { data: documents, isLoading, error } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
+    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchIntervalInBackground: true, // Continue polling when tab is not active
+    staleTime: 0, // Always consider data stale to ensure fresh data
   })
 
   const deleteMutation = useMutation({

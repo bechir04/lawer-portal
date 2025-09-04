@@ -283,7 +283,7 @@ function useChat() {
 
   // Filter conversations based on search term
   const filteredConversations = conversations.filter(conv =>
-    conv.lawyer.name.toLowerCase().includes(searchTerm.toLowerCase())
+    conv.lawyer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false
   );
 
   // Load more messages when scrolling up

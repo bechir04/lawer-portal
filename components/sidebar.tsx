@@ -21,10 +21,6 @@ export function Sidebar() {
 
   const navItems = [
     {
-      href: "/dashboard",
-      icon: LayoutDashboard,
-    },
-    {
       href: "/dashboard/clients",
       icon: Users,
     },
@@ -47,10 +43,6 @@ export function Sidebar() {
     {
       href: "/dashboard/documents",
       icon: FileText,
-    },
-    {
-      href: "/dashboard/analytics",
-      icon: BarChart3,
     },
     {
       href: "/dashboard/settings",

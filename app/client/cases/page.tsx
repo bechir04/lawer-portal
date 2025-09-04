@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, DollarSign, FileText, MessageSquare, Eye, Loader2, AlertCircle, Plus, RefreshCw } from "lucide-react"
+import Link from "next/link"
 import { CreateCaseDialog } from "@/components/cases/create-case-dialog"
 
 interface Case {
@@ -194,9 +195,11 @@ export default function ClientCasesPage() {
                     <strong>Lawyer:</strong> {caseItem.lawyer}
                   </p>
                   <div className="flex gap-2">
-                    <Button size="sm" className="gap-2">
-                      <Eye className="h-4 w-4" />
-                      View Details
+                    <Button size="sm" className="gap-2" asChild>
+                      <Link href={`/client/cases/${caseItem.id}`}>
+                        <Eye className="h-4 w-4" />
+                        View Details
+                      </Link>
                     </Button>
                     <Button size="sm" variant="outline" className="gap-2 bg-transparent">
                       <MessageSquare className="h-4 w-4" />

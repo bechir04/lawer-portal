@@ -5,6 +5,7 @@ import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { format, parseISO, isBefore, isToday, isTomorrow } from "date-fns"
 import { Calendar, Clock, Video, MapPin, Phone, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import Link from "next/link"
 import { useSocket } from "@/hooks/use-socket"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -481,8 +482,10 @@ export default function LawyerAppointmentsPage() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <Button size="sm" variant="outline">
-                        View Details
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/dashboard/appointments/${appointment.id}`}>
+                          View Details
+                        </Link>
                       </Button>
                     </div>
                   </div>

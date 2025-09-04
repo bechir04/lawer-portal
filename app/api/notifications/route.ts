@@ -35,7 +35,7 @@ console.log(notifications)
     }
   },
 
-  // PUT /api/notifications/[id]/read - Mark notification as read
+  // PUT /api/notifications - Delete notification (mark as read = delete)
   async PUT(request: NextRequest) {
     try {
       const session = await getServerSession(authOptions)
@@ -50,19 +50,18 @@ console.log(notifications)
         return NextResponse.json({ error: "Notification ID is required" }, { status: 400 })
       }
 
-      const updatedNotification = await prisma.notification.update({
+      await prisma.notification.delete({
         where: { id: notificationId, userId: session.user.id },
-        data: { isRead: true },
       })
 
-      return NextResponse.json(updatedNotification)
+      return NextResponse.json({ success: true })
     } catch (error) {
-      console.error("Error updating notification:", error)
+      console.error("Error deleting notification:", error)
       return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
   },
 
-  // PATCH /api/notifications/mark-all-read - Mark all notifications as read
+  // PATCH /api/notifications - Delete all notifications (mark all as read = delete all)
   async PATCH(request: NextRequest) {
     try {
       const session = await getServerSession(authOptions);
@@ -70,17 +69,16 @@ console.log(notifications)
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      await prisma.notification.updateMany({
+      await prisma.notification.deleteMany({
         where: { 
           userId: session.user.id, 
           isRead: false
         },
-        data: { isRead: true },
       });
 
       return NextResponse.json({ success: true });
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
+      console.error("Error deleting all notifications:", error);
       return NextResponse.json({ error: "Internal server error" }, { status: 500 });
     }
   }

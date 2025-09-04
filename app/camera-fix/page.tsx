@@ -252,15 +252,10 @@ export default function CameraFixPage() {
         await localVideoRef.current.play()
         setNeedsUserInteraction(false)
         console.log('Video started after user interaction')
-      } catch (err) {
-        console.error('Failed to play video:', err)
-        setError(`Failed to start video: ${err.message}`)
-      }
-    } else {
-      setError('No video stream available. Please try joining the call again.')
+      } 
+    
+  
     }
-  }
-
   const joinCall = async () => {
     if (!userId.trim() || !userName.trim()) {
       setError('Please enter both User ID and User Name')

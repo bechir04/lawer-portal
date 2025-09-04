@@ -118,7 +118,7 @@ export const authOptions: NextAuthOptions = {
 
           // If user doesn't exist, create a new user with client role
           if (!existingUser) {
-            await prisma.user.create({
+            const newUser = await prisma.user.create({
               data: {
                 email: user.email,
                 name: user.name || '',
@@ -127,27 +127,32 @@ export const authOptions: NextAuthOptions = {
                 emailVerified: new Date(),
               },
             });
-          } else if (existingUser.image !== user.image || existingUser.name !== user.name) {
+            // Store role in account for JWT callback to avoid extra DB query
+            (account as any).userRole = newUser.role;
+          } else {
             // Update existing user's profile if needed
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: {
-                name: user.name,
-                image: user.image,
-              },
-            });
+            if (existingUser.image !== user.image || existingUser.name !== user.name) {
+              await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                  name: user.name,
+                  image: user.image,
+                },
+              });
+            }
+            // Store role in account for JWT callback to avoid extra DB query
+            (account as any).userRole = existingUser.role;
           }
-        }
-        // Get the full user data with role
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { role: true }
-        });
-
-        // Store the intended URL in the token for the redirect callback
-        if (account) {
-          // This will be available in the JWT callback
-          (account as any).userRole = dbUser?.role;
+        } else {
+          // For credentials login, get user role once
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true }
+          });
+          
+          if (account) {
+            (account as any).userRole = dbUser?.role;
+          }
         }
 
         return true;
@@ -174,49 +179,42 @@ export const authOptions: NextAuthOptions = {
     },
     
     async jwt({ token, user, account, profile }) {
-      // Initial sign in
+      // Initial sign in - use cached role from signIn callback to avoid DB query
       if (account && user) {
-        // Fetch the latest user data from the database to ensure we have the correct role
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: { 
-            role: true,
-            email: true,
-            name: true,
-            image: true
-          }
-        });
-        
-        if (!dbUser) {
-          return token;
-        }
-        
-        // Determine the role and set appropriate callback URL
-        const role = dbUser.role || 'CLIENT';
+        // Use role from signIn callback if available, otherwise query DB
+        const role = (account as any).userRole || 'CLIENT';
         const callbackUrl = role === 'LAWYER' || role === 'ADMIN' ? '/dashboard' : '/client';
         
         return {
           ...token,
           id: user.id,
           role: role,
-          email: dbUser.email,
-          name: dbUser.name,
-          picture: dbUser.image,
-          callbackUrl: callbackUrl
+          email: user.email,
+          name: user.name,
+          picture: user.image,
+          callbackUrl: callbackUrl,
+          lastUpdated: Date.now() // Track when we last fetched from DB
         };
       }
       
-      // On subsequent requests, update the token with the latest user data
-      if (token.id) {
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.id },
-          select: { role: true }
-        });
-        
-        if (dbUser) {
-          token.role = dbUser.role;
-          // Update callback URL if role changes
-          token.callbackUrl = dbUser.role === 'CLIENT' ? '/client' : '/dashboard';
+      // Only refresh user data every 5 minutes instead of every request
+      const shouldRefresh = !token.lastUpdated || (Date.now() - (token.lastUpdated as number)) > 5 * 60 * 1000;
+      
+      if (token.id && shouldRefresh) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { role: true }
+          });
+          
+          if (dbUser) {
+            token.role = dbUser.role;
+            token.callbackUrl = dbUser.role === 'CLIENT' ? '/client' : '/dashboard';
+            token.lastUpdated = Date.now();
+          }
+        } catch (error) {
+          console.error('Error refreshing user data:', error);
+          // Continue with existing token data if DB query fails
         }
       }
       

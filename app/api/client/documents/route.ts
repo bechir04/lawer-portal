@@ -89,6 +89,31 @@ export async function POST(req: Request) {
       },
     });
 
+    // Create notification for lawyers/admins about new document upload
+    const lawyers = await prisma.user.findMany({
+      where: {
+        role: { in: ['LAWYER', 'ADMIN'] }
+      },
+      select: { id: true }
+    });
+
+    // Create notifications for all lawyers/admins
+    if (lawyers.length > 0) {
+      await prisma.notification.createMany({
+        data: lawyers.map(lawyer => ({
+          userId: lawyer.id,
+          title: "New Document Uploaded",
+          message: `Client uploaded a new document: ${file.name}`,
+          type: "DOCUMENT_UPLOADED",
+        }))
+      });
+    }
+
+    // Trigger notification refresh for lawyers/admins
+    if (typeof window !== 'undefined' && (window as any).refetchNotifications) {
+      (window as any).refetchNotifications();
+    }
+
     return NextResponse.json({ 
       success: true,
       document: {

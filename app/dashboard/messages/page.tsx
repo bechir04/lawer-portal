@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Send, Search, MessageSquare, Users, Clock, Paperclip, AlertCircle, Loader2 } from "lucide-react"
 import { useConversations } from "@/hooks/useConversations"
@@ -21,6 +22,9 @@ import { Textarea } from "@/components/ui/textarea"
 export default function MessagesPage() {
   const [newMessage, setNewMessage] = useState("")
   const [searchTerm, setSearchTerm] = useState("")
+  const [showClientList, setShowClientList] = useState(false)
+  const [clients, setClients] = useState<any[]>([])
+  const [loadingClients, setLoadingClients] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { data: session } = useSession()
   
@@ -53,10 +57,17 @@ export default function MessagesPage() {
     return otherUser?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   })
 
-  // Scroll to bottom of messages when new messages arrive
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Fetch clients when dialog opens
+  useEffect(() => {
+    if (showClientList && clients.length === 0) {
+      fetchClients()
+    }
+  }, [showClientList, clients.length])
 
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -83,7 +94,43 @@ export default function MessagesPage() {
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
+    setSearchTerm(e.target.value)
+  }
+
+  const fetchClients = async () => {
+    try {
+      setLoadingClients(true)
+      const response = await fetch('/api/dashboard/clients')
+      if (!response.ok) throw new Error('Failed to fetch clients')
+      const data = await response.json()
+      setClients(data)
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+    } finally {
+      setLoadingClients(false)
+    }
+  }
+
+  const startConversationWithClient = async (clientId: string) => {
+    try {
+      // Create a new conversation by sending a message
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: 'Hello! I\'m reaching out to discuss your case.',
+          receiverId: clientId,
+        }),
+      })
+      
+      if (!response.ok) throw new Error('Failed to start conversation')
+      
+      setShowClientList(false)
+      // Refresh conversations to show the new one
+      window.location.reload()
+    } catch (error) {
+      console.error('Error starting conversation:', error)
+    }
   };
 
   return (
@@ -93,6 +140,10 @@ export default function MessagesPage() {
           <h1 className="text-4xl font-bold tracking-tight">Messages</h1>
           <p className="text-muted-foreground text-lg">Communicate with your clients in real-time.</p>
         </div>
+        <Button onClick={() => setShowClientList(true)}>
+          <Users className="h-4 w-4 mr-2" />
+          New Conversation
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -215,7 +266,7 @@ export default function MessagesPage() {
                               {lastMessage?.content || 'No messages yet'}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {lastMessage ? formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: true }) : ''}
+                              {lastMessage && lastMessage.createdAt ? formatDistanceToNow(new Date(lastMessage.createdAt), { addSuffix: true }) : ''}
                             </p>
                           </div>
                         </div>
@@ -366,15 +417,86 @@ export default function MessagesPage() {
             </>
           ) : (
             <div className="flex h-[600px] flex-col items-center justify-center p-6 text-center">
-              <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground" />
+              <MessageSquare className="h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-lg font-medium">No conversation selected</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Select a conversation from the list or start a new one
+                {conversations.length === 0 
+                  ? "You don't have any conversations yet. Start a conversation with a client below."
+                  : "Choose a conversation from the list to start messaging"
+                }
               </p>
+              {conversations.length === 0 && (
+                <Button 
+                  className="mt-4" 
+                  onClick={() => setShowClientList(true)}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Start New Conversation
+                </Button>
+              )}
             </div>
           )}
         </Card>
       </div>
+
+      {/* Client List Dialog */}
+      <Dialog open={showClientList} onOpenChange={setShowClientList}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Start New Conversation</DialogTitle>
+            <DialogDescription>
+              Select a client to start a conversation with.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingClients ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : clients.length > 0 ? (
+              <div className="max-h-[400px] overflow-y-auto space-y-2">
+                {clients.map((client) => (
+                  <div
+                    key={client.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => startConversationWithClient(client.id)}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <Avatar>
+                        <AvatarImage src={client.image || ''} alt={client.name || ''} />
+                        <AvatarFallback>
+                          {client.name?.split(' ').map((n: string) => n[0]).join('').toUpperCase() || 'C'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{client.name || 'Unnamed Client'}</p>
+                        <p className="text-sm text-muted-foreground">{client.email}</p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline">
+                      Start Chat
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-1">No clients found</h3>
+                <p className="text-muted-foreground">You don't have any clients assigned yet.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

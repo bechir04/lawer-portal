@@ -98,14 +98,14 @@ export default function ClientPaymentsPage() {
       if (!response.ok) throw new Error('Failed to create payment intent')
       
       const { clientSecret } = await response.json()
-      
-      const stripe = await stripePromise
-      if (!stripe) throw new Error('Stripe failed to load')
+    
+    const stripe = await stripePromise
+    if (!stripe) throw new Error('Stripe failed to load')
 
-      // Redirect to Stripe Checkout using the session ID
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: clientSecret
-      })
+    // Redirect to Stripe Checkout using the session ID
+    const { error } = await stripe.redirectToCheckout({
+      sessionId: clientSecret
+    })
 
       if (error) {
         throw new Error(error.message)

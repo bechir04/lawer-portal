@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_SITE_URL+'/api';
+const API_BASE_URL = (process.env.NEXT_PUBLIC_SITE_URL || '') + '/api';
 
 // Create Axios instance with default config
 const api: AxiosInstance = axios.create({
